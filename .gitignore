@@ -34,3 +34,6 @@ tmp/
 *.tar
 *.tar.gz
 
+*.key
+*.pem
+*.crt
