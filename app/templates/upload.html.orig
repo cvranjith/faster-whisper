@@ -1,0 +1,52 @@
+<!-- app/templates/upload.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Transcription File</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        form { display: flex; gap: 10px; align-items: center; }
+        button { padding: 6px 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2>Upload Audio</h2>
+    <form id="upload-form" enctype="multipart/form-data">
+        <input type="file" name="file" accept="audio/*" required>
+        <label>Model:</label>
+        <select name="model_size">
+            <option value="tiny">Tiny</option>
+            <option value="base" selected>Base</option>
+            <option value="medium">Medium</option>
+        </select>
+        <button type="submit">Upload</button>
+    </form>
+
+    <script>
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        document.getElementById("upload-form").onsubmit = async function(e) {
+            e.preventDefault();
+            const form = new FormData(this);
+
+            // Use ?id= override if provided
+            const customId = getQueryParam("id");
+            if (customId) form.append("custom_id", customId);
+
+            const res = await fetch("/upload", { method: "POST", body: form });
+            const data = await res.json();
+            console.log("Uploaded ID:", data.audio_id);
+
+            // Optional auto-close logic
+            if (getQueryParam("close") === "true") {
+                setTimeout(() => window.close(), 1000);
+            } else {
+                alert("Upload complete: " + data.audio_id);
+            }
+        }
+    </script>
+</body>
+</html>

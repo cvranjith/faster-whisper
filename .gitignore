@@ -1,0 +1,36 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pkl
+*.log
+
+# Environments
+.env
+.venv/
+env/
+venv/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Transcription output files
+output_*.txt
+
+# Uploaded audio
+uploads/
+
+# IDEs
+.idea/
+.vscode/
+
+# Model cache (if used)
+.whisper/
+.faster-whisper/
+.cache/
+tmp/
+*.tar
+*.tar.gz
+

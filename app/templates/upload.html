@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Upload Transcription File</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      max-width: 600px;
+      margin: auto;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    #drop-zone {
+      border: 2px dashed #007bff;
+      padding: 40px;
+      text-align: center;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      color: #555;
+    }
+
+    #drop-zone.dragover {
+      background-color: #e6f2ff;
+    }
+
+    #drop-zone p {
+      margin: 0;
+    }
+
+    .browse-text {
+      color: #007bff;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .form-group {
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    label {
+      font-weight: bold;
+    }
+
+    select {
+      padding: 6px;
+    }
+
+    .actions {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #submit-btn {
+      background-color: #007bff;
+      color: white;
+    }
+
+    #reset-btn {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    #upload-status {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    #progress-container {
+      width: 100%;
+      background-color: #eee;
+      height: 10px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 10px;
+      display: none;
+    }
+
+    #progress-bar {
+      width: 0%;
+      height: 100%;
+      background-color: #007bff;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Upload Audio</h2>
+
+  <form id="upload-form" enctype="multipart/form-data">
+    <div id="drop-zone">
+      <p id="drop-zone-text">Drag & drop audio file here, or <span class="browse-text">browse</span></p>
+      <input type="file" id="file-input" name="file" accept="audio/*" style="display: none;" required>
+    </div>
+
+    <div class="form-group">
+      <label for="model_size">Model:</label>
+      <select id="model_size" name="model_size">
+        <option value="tiny">Tiny</option>
+        <option value="base" selected>Base</option>
+        <option value="medium">Medium</option>
+      </select>
+      <button type="submit" id="submit-btn">Upload</button>
+    </div>
+
+    <div class="actions">
+      <button type="button" id="reset-btn">Reset</button>
+    </div>
+
+    <div id="progress-container">
+      <div id="progress-bar"></div>
+    </div>
+
+    <div id="upload-status"></div>
+  </form>
+
+  <script>
+    const fileInput = document.getElementById("file-input");
+    const dropZone = document.getElementById("drop-zone");
+    const dropZoneText = document.getElementById("drop-zone-text");
+    const progressContainer = document.getElementById("progress-container");
+    const progressBar = document.getElementById("progress-bar");
+    const uploadStatus = document.getElementById("upload-status");
+    const resetBtn = document.getElementById("reset-btn");
+    const submitBtn = document.getElementById("submit-btn");
+
+    function getQueryParam(param) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(param);
+    }
+
+    function updateFileNameDisplay(file) {
+      dropZoneText.innerHTML = file
+        ? `Selected: ${file.name}`
+        : 'Drag & drop audio file here, or <span class="browse-text">browse</span>';
+    }
+
+    dropZone.addEventListener("click", () => fileInput.click());
+
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      if (e.dataTransfer.files.length > 0) {
+        fileInput.files = e.dataTransfer.files;
+        updateFileNameDisplay(fileInput.files[0]);
+      }
+    });
+
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length > 0) {
+        updateFileNameDisplay(fileInput.files[0]);
+      }
+    });
+
+    resetBtn.onclick = () => {
+      fileInput.value = '';
+      updateFileNameDisplay(null);
+      uploadStatus.textContent = '';
+      progressBar.style.width = '0%';
+      progressContainer.style.display = 'none';
+    };
+
+    document.getElementById("upload-form").onsubmit = async function (e) {
+      e.preventDefault();
+      if (!fileInput.files.length) {
+        alert("Please select a file first.");
+        return;
+      }
+
+      const form = new FormData();
+      form.append("file", fileInput.files[0]);
+      form.append("model_size", document.getElementById("model_size").value);
+
+      const customId = getQueryParam("id");
+      const shouldClose = getQueryParam("close") === "true";
+      if (customId) form.append("custom_id", customId);
+
+      progressContainer.style.display = "block";
+      uploadStatus.textContent = "Uploading...";
+      progressBar.style.width = "0%";
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/upload");
+
+      xhr.upload.addEventListener("progress", function (e) {
+        if (e.lengthComputable) {
+          const percent = (e.loaded / e.total) * 100;
+          progressBar.style.width = percent + "%";
+        }
+      });
+
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          const res = JSON.parse(xhr.responseText);
+          uploadStatus.textContent = "Uploaded ID: " + res.audio_id;
+          if (shouldClose) {
+            setTimeout(() => window.close(), 1000);
+          } else {
+            alert("Upload complete: " + res.audio_id);
+          }
+        } else {
+          uploadStatus.textContent = "Upload failed.";
+        }
+      };
+
+      xhr.onerror = function () {
+        uploadStatus.textContent = "Upload error.";
+      };
+
+      xhr.send(form);
+    };
+  </script>
+</body>
+</html>
